@@ -4,23 +4,97 @@ import { generateInvoiceHTML } from "../templates/generateInvoiceHTML.js";
 
 // -------------------- ORDERS --------------------
 
-// Place a new order
 export const placeOrder = async (req, res) => {
   try {
     const { guestName, contact, tableNumber, dateTime, items, total } = req.body;
 
-    const { data, error } = await supabase.from("orders").insert([
-      { guestName, contact, tableNumber, dateTime, items, total, status: "Pending" },
-    ]);
+    // Check if existing order is already pending for the same table & guest
+    const { data: existingOrders, error: fetchError } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("tableNumber", tableNumber)
+      .eq("status", "Pending");
 
-    if (error) throw error;
+    if (fetchError) throw fetchError;
 
-    res.status(201).json({ message: "Order placed successfully", data });
+    if (existingOrders && existingOrders.length > 0) {
+      // 🟢 Update existing order instead of creating new one
+      const existingOrder = existingOrders[0];
+
+      // Parse old items
+      let oldItems = [];
+      try {
+        oldItems = Array.isArray(existingOrder.items)
+          ? existingOrder.items
+          : JSON.parse(existingOrder.items || "[]");
+      } catch {
+        oldItems = [];
+      }
+
+      // 🧩 Merge items without duplicating
+      const mergedItems = [...oldItems];
+
+      items.forEach((newItem) => {
+        const existingIndex = mergedItems.findIndex(
+          (i) => i.name === newItem.name
+        );
+
+        if (existingIndex !== -1) {
+          // If same item already exists, just increase quantity
+          mergedItems[existingIndex].qty += newItem.qty;
+          mergedItems[existingIndex].subtotal += newItem.subtotal;
+        } else {
+          mergedItems.push(newItem);
+        }
+      });
+
+      // Recalculate total
+      const updatedTotal = mergedItems.reduce((sum, i) => sum + i.subtotal, 0);
+
+      // Update the existing order
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({
+          items: mergedItems,
+          total: updatedTotal,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingOrder.id);
+
+      if (updateError) throw updateError;
+
+      return res.status(200).json({
+        message: "Order updated successfully",
+        type: "update",
+      });
+    } else {
+      // 🆕 Create new order
+      const { data, error } = await supabase.from("orders").insert([
+        {
+          guestName,
+          contact,
+          tableNumber,
+          dateTime,
+          items,
+          total,
+          status: "Pending",
+        },
+      ]);
+
+      if (error) throw error;
+
+      return res.status(201).json({
+        message: "Order placed successfully",
+        type: "new",
+        data,
+      });
+    }
   } catch (err) {
     console.error("placeOrder error:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Get pending orders
 export const getPendingOrders = async (req, res) => {
