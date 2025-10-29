@@ -1,8 +1,3 @@
-
-
-
-
-
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -34,11 +29,15 @@ const TakeOrders = () => {
     guestName: "",
     tableNumber: "",
     contact: "",
+    receiveby: "",
     items: [],
   });
 
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Dummy waiter list (you can later fetch from Supabase)
+  const waiters = [ "Ramesh", "Suresh", "Amit", "Neha", "Priya"];
 
   // Timer for date & time
   useEffect(() => {
@@ -81,6 +80,7 @@ const TakeOrders = () => {
         guestName: location.state.addMoreFor.guestName,
         tableNumber: location.state.addMoreFor.tableNumber,
         contact: location.state.addMoreFor.contact,
+        receiveby: location.state.addMoreFor.receiveby || "",
         items: [],
       });
     }
@@ -96,6 +96,7 @@ const TakeOrders = () => {
           guestName: tableOrder.guestName,
           tableNumber: tableOrder.tableNumber,
           contact: tableOrder.contact,
+          receiveby: tableOrder.receiveby, // ✅ added
           dateTime: new Date(),
           items: tableOrder.items,
           total: tableOrder.items.reduce(
@@ -112,67 +113,71 @@ const TakeOrders = () => {
     }
   };
 
-  
-const handleAddToCart = (selectedItems) => {
-  console.log("🛒 Selected Items:", selectedItems);
+  const handleAddToCart = (selectedItems) => {
+    if (!orderData.guestName || !orderData.tableNumber) {
+      alert("Please enter guest name and table number first.");
+      return;
+    }
 
-  if (!orderData.guestName || !orderData.tableNumber) {
-    alert("Please enter guest name and table number first.");
-    return;
-  }
+    if (!orderData.receiveby || orderData.receiveby === "Select Waiter") {
+      alert("Please select the waiter (Received By)!");
+      return;
+    }
 
-  if (!/^\d{10}$/.test(orderData.contact)) {
-    alert("Please enter a valid 10-digit contact number!");
-    return;
-  }
+    if (!/^\d{10}$/.test(orderData.contact)) {
+      alert("Please enter a valid 10-digit contact number!");
+      return;
+    }
 
-  const tableKey = `Table-${orderData.tableNumber}`;
+    const tableKey = `Table-${orderData.tableNumber}`;
 
-  setCart((prevCart) => {
-    const oldItems = prevCart[tableKey]?.items || [];
-    console.log("📦 Old Items:", oldItems);
+    setCart((prevCart) => {
+      const oldItems = prevCart[tableKey]?.items || [];
+      const mergedItems = [...oldItems];
 
-    const mergedItems = [...oldItems];
+      selectedItems.forEach((newItem) => {
+        const existingIndex = mergedItems.findIndex((i) => i.name === newItem.name);
+        if (existingIndex !== -1) {
+          mergedItems[existingIndex].quantity =
+            (mergedItems[existingIndex].quantity || 1) + (newItem.quantity || 1);
+          mergedItems[existingIndex].total =
+            (mergedItems[existingIndex].price || 0) *
+            mergedItems[existingIndex].quantity;
+        } else {
+          mergedItems.push({
+            ...newItem,
+            quantity: newItem.quantity || 1,
+            total: newItem.total || newItem.price,
+          });
+        }
+      });
 
-    selectedItems.forEach((newItem) => {
-      const existingIndex = mergedItems.findIndex((i) => i.name === newItem.name);
-      if (existingIndex !== -1) {
-        mergedItems[existingIndex].quantity =
-          (mergedItems[existingIndex].quantity || 1) + (newItem.quantity || 1);
-        mergedItems[existingIndex].total =
-          (mergedItems[existingIndex].price || 0) *
-          mergedItems[existingIndex].quantity;
-      } else {
-        mergedItems.push({
-          ...newItem,
-          quantity: newItem.quantity || 1,
-          total: newItem.total || newItem.price,
-        });
-      }
+      const updatedTable = {
+        guestName: orderData.guestName,
+        tableNumber: orderData.tableNumber,
+        contact: orderData.contact,
+        receiveby: orderData.receiveby, // ✅ include waiter name
+        items: mergedItems,
+      };
+
+      sendOrderToBackend(updatedTable);
+
+      return {
+        ...prevCart,
+        [tableKey]: updatedTable,
+      };
     });
 
-    const updatedTable = {
-      guestName: orderData.guestName,
-      tableNumber: orderData.tableNumber,
-      contact: orderData.contact,
-      items: mergedItems,
-    };
-
-    console.log("✅ Updated Table:", updatedTable);
-
-    // ✅ send to backend after merging
-    sendOrderToBackend(updatedTable);
-
-    return {
-      ...prevCart,
-      [tableKey]: updatedTable,
-    };
-  });
-
-  if (!location.state?.addMoreFor) {
-    setOrderData({ guestName: "", tableNumber: "", contact: "", items: [] });
-  }
-};
+    if (!location.state?.addMoreFor) {
+      setOrderData({
+        guestName: "",
+        tableNumber: "",
+        contact: "",
+        receiveby: "",
+        items: [],
+      });
+    }
+  };
 
   // Calculate total amount
   const totalAmount = Object.values(cart).reduce((sum, table) => {
@@ -194,47 +199,65 @@ const handleAddToCart = (selectedItems) => {
         </div>
 
         {/* Guest & Table */}
-        <div className="row mb-3">
+        <div className="row mb-3 align-items-center">
           <div className="col">
             <input
               type="text"
               className="form-control"
-              style={{ width: "250px" }}
+              style={{ width: "200px" }}
               placeholder="Guest Name"
               value={orderData.guestName}
               onChange={(e) => setOrderData({ ...orderData, guestName: e.target.value })}
             />
           </div>
+
           <div className="col">
             <input
               type="text"
               className="form-control"
-              style={{ width: "150px", marginLeft: "-35px" }}
+              style={{ width: "120px" }}
               placeholder="Table No."
               value={orderData.tableNumber}
               onChange={(e) => setOrderData({ ...orderData, tableNumber: e.target.value })}
             />
           </div>
+
           <div className="col">
-            {/* ✅ Contact Input (10-digit only) */}
             <input
               type="tel"
               className="form-control"
-              style={{ width: "150px", marginLeft: "-170px" }}
+              style={{ width: "150px" }}
               placeholder="Contact"
               value={orderData.contact}
               maxLength="10"
               inputMode="numeric"
               onInput={(e) => {
-                e.target.value = e.target.value.replace(/[^0-9]/g, ""); // Only digits
+                e.target.value = e.target.value.replace(/[^0-9]/g, "");
               }}
               onChange={(e) => setOrderData({ ...orderData, contact: e.target.value })}
             />
           </div>
-          <div className="col" style={{ marginLeft: "-250px", marginTop: "8px" }}>
-            <p style={{ marginLeft: "-60px", fontSize: "16px" }}>Date and Time:</p>
-            <p style={{ fontSize: "15px", fontWeight: "normal", marginTop: "-37px", marginLeft: "55px" }}>
-              {currentTime.toLocaleString()}
+
+          {/* ✅ Received By Dropdown */}
+          <div className="col">
+            <select
+              className="form-select"
+              style={{ width: "180px" }}
+              value={orderData.receiveby}
+              onChange={(e) => setOrderData({ ...orderData, receiveby: e.target.value })}
+            >
+              <option value="">Select Waiter</option>
+              {waiters.map((w, i) => (
+                <option key={i} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="col" style={{ marginTop: "8px" }}>
+            <p style={{ fontSize: "14px", marginBottom: 0 }}>
+              <strong>Date & Time:</strong> {currentTime.toLocaleString()}
             </p>
           </div>
         </div>

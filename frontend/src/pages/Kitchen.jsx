@@ -1,123 +1,3 @@
-// import React, { useEffect, useRef } from "react";
-// import { useOrders } from "../context/OrdersContext";
-// import toast from "react-hot-toast";
-
-// const Kitchen = () => {
-//   const { confirmedOrders } = useOrders();
-//   const notifiedOrders = useRef(new Set()); // Track which orders already triggered notifications
-
-//   // Play notification sound
-//   const playNotificationSound = () => {
-//     const audio = new Audio("/notification.mp3");
-//     audio.play();
-//   };
-
-//   // ✅ Filter out duplicate orders (ensure unique by ID)
-//   const uniqueOrders = Object.values(confirmedOrders || {}).reduce((acc, order) => {
-//     const orderKey = order.id || order.orderId || order._id;
-//     acc[orderKey] = order;
-//     return acc;
-//   }, {});
-
-//   // ✅ Toast + sound for new special notes
-//   useEffect(() => {
-//     Object.values(uniqueOrders).forEach((order) => {
-//       const orderKey = order.id || order.orderId || order._id;
-
-//       if (
-//         order.specialNotes &&
-//         order.specialNotes.trim() !== "" &&
-//         !notifiedOrders.current.has(orderKey)
-//       ) {
-//         toast(`New Note for Table ${order.tableNumber}: ${order.specialNotes}`, {
-//           icon: "⚡",
-//         });
-//         playNotificationSound();
-//         notifiedOrders.current.add(orderKey);
-//       }
-//     });
-//   }, [uniqueOrders]);
-
-//   // ✅ Format time for better display
-//   const formatTime = (time) => {
-//     if (!time) return "—";
-//     try {
-//       return new Date(time).toLocaleTimeString([], {
-//         hour: "2-digit",
-//         minute: "2-digit",
-//       });
-//     } catch {
-//       return time;
-//     }
-//   };
-
-//   return (
-//     <div
-//       className="container-fluid py-4"
-//       style={{ background: "#f7f7f7", minHeight: "100vh" }}
-//     >
-//       <h2 className="fw-semibold mb-4">Kitchen Orders</h2>
-
-//       {Object.keys(uniqueOrders).length === 0 ? (
-//         <p className="text-muted text-center mt-5">No confirmed orders yet</p>
-//       ) : (
-//         <div className="row g-4">
-//           {Object.entries(uniqueOrders).map(([key, order]) => (
-//             <div className="col-lg-3 col-md-4 col-sm-6" key={key}>
-//               <div className="card shadow-sm border-0 h-100">
-//                 <div className="card-header bg-success text-white py-2 rounded-top">
-//                   <div className="d-flex justify-content-between align-items-center">
-//                     <div className="small text-light">
-//                       Ordered: {formatTime(order.time)}
-//                     </div>
-//                     <span className="badge bg-light text-dark">
-//                       Table #{order.tableNumber || "—"}
-//                     </span>
-//                   </div>
-//                 </div>
-
-//                 <div className="card-body">
-//                   <div className="d-flex justify-content-between align-items-center mb-2">
-//                     <span className="fw-semibold text-secondary">
-//                       KOT #{order.orderId || order._id || key}
-//                     </span>
-//                     {order.type === "Take Away" && (
-//                       <span className="badge bg-warning text-dark">
-//                         Take Away
-//                       </span>
-//                     )}
-//                   </div>
-
-//                   <ul className="list-unstyled small mb-3">
-//                     {order.items?.map((item, i) => (
-//                       <li key={i} className="d-flex justify-content-between">
-//                         <span>
-//                           {item.quantity} × {item.name}
-//                           {item.addons && (
-//                             <span className="text-muted"> (+{item.addons})</span>
-//                           )}
-//                         </span>
-//                       </li>
-//                     ))}
-//                   </ul>
-
-//                   {order.specialNotes && order.specialNotes.trim() !== "" && (
-//                     <div className="alert alert-danger py-2 mb-0">
-//                       <strong>Note:</strong> {order.specialNotes}
-//                     </div>
-//                   )}
-//                 </div>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default Kitchen;
-
 import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -195,7 +75,7 @@ const Kitchen = () => {
       <h2 className="fw-semibold mb-4">Kitchen Orders</h2>
 
       <ul className="nav nav-tabs mb-4">
-        {[ "Confirmed", "Completed"].map((tab) => (
+        {["Confirmed", "Completed"].map((tab) => (
           <li className="nav-item" key={tab}>
             <button
               className={`nav-link ${activeTab === tab ? "active" : ""}`}
@@ -237,8 +117,20 @@ const Kitchen = () => {
                     <span className="fw-semibold text-secondary">
                       KOT #{order.id}
                     </span>
-                    <span className="badge" style={{backgroundColor:'#051650'}}>{order.status} </span>
+                    <span
+                      className="badge"
+                      style={{ backgroundColor: "#051650" }}
+                    >
+                      {order.status}
+                    </span>
                   </div>
+
+                  {/* 👨‍🍳 Waiter Name */}
+                  {order.receiveby && (
+                    <p className="text-muted small mb-2">
+                      <strong>Waiter:</strong> {order.receiveby}
+                    </p>
+                  )}
 
                   <ul className="list-unstyled small mb-3">
                     {order.items?.map((item, i) => (
@@ -258,8 +150,8 @@ const Kitchen = () => {
                       <strong>Note:</strong>{" "}
                       {Array.isArray(order.notes)
                         ? order.notes
-                          .map((n, i) => `${n.qty} × ${n.text}`)
-                          .join(", ")
+                            .map((n, i) => `${n.qty} × ${n.text}`)
+                            .join(", ")
                         : order.notes}
                     </div>
                   )}
@@ -274,4 +166,3 @@ const Kitchen = () => {
 };
 
 export default Kitchen;
-

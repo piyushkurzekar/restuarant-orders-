@@ -1,8 +1,3 @@
-
-
-
-
-
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -18,7 +13,7 @@ const Orders = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [orders, setOrders] = useState([]);
 
-  // Fetch all completed orders from backend
+  // ✅ Fetch completed orders from backend
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -32,15 +27,15 @@ const Orders = () => {
     fetchOrders();
   }, []);
 
-  // Filter orders by selected date
+  // ✅ Filter by date
   const filteredOrders = selectedDate
     ? orders.filter(
-      (order) =>
-        new Date(order.dateTime).toLocaleDateString("en-CA") === selectedDate
-    )
+        (order) =>
+          new Date(order.dateTime).toLocaleDateString("en-CA") === selectedDate
+      )
     : [];
 
-  // Calculate total for selected date
+  // ✅ Calculate total
   const totalAmount = filteredOrders.reduce((sum, order) => {
     const itemsTotal = order.items.reduce(
       (s, item) => s + (item.total || item.price * (item.quantity || 1)),
@@ -59,7 +54,7 @@ const Orders = () => {
     <div className="container mt-4">
       <h2 className="mb-4">Orders Summary</h2>
 
-      {/* Date Picker */}
+      {/* 📅 Date Picker */}
       <div className="mb-3 w-25">
         <label className="form-label fw-bold">Select Date</label>
         <input
@@ -70,7 +65,7 @@ const Orders = () => {
         />
       </div>
 
-      {/* Orders Table */}
+      {/* 🧾 Orders Table */}
       {selectedDate && (
         <>
           <h5 className="mb-3">
@@ -87,14 +82,15 @@ const Orders = () => {
                 <th>Payment Mode</th>
                 <th>Amount (₹)</th>
                 <th>Date & Time</th>
-                <th>Received By</th>
+                <th>Received By</th> {/* ✅ Added */}
               </tr>
             </thead>
             <tbody>
               {filteredOrders.length > 0 ? (
                 filteredOrders.map((order) => {
                   const itemsTotal = order.items.reduce(
-                    (s, item) => s + (item.total || item.price * (item.quantity || 1)),
+                    (s, item) =>
+                      s + (item.total || item.price * (item.quantity || 1)),
                     0
                   );
 
@@ -113,13 +109,13 @@ const Orders = () => {
                       <td>{order.paymentMethod || "UPI"}</td>
                       <td>₹ {amount.toLocaleString()}</td>
                       <td>{new Date(order.dateTime).toLocaleString()}</td>
-                      <td>{order.steward || "—"}</td>
+                      <td>{order.receiveby || "—"}</td> {/* ✅ Fixed */}
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center text-muted">
+                  <td colSpan="7" className="text-center text-muted">
                     No orders found for this date.
                   </td>
                 </tr>

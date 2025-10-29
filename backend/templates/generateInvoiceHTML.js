@@ -103,7 +103,7 @@ export const generateInvoiceHTML = (order) => {
         <div class="left">
           <h2>SHIVAAM FARMS & RESORTS</h2>
           <p>01, AB, Green Planet, Omkar Nagar</p>
-          <p>phone no: +91 7387750307</p>
+          <p>Phone: +91 7387750307</p>
           <p>Email: shivaamfarmsandresorts@gmail.com</p>
         </div>
         <div class="right" style="text-align:right;">
@@ -112,6 +112,11 @@ export const generateInvoiceHTML = (order) => {
           <p><strong>Table:</strong> ${order.tableNumber}</p>
           <p><strong>Contact:</strong> ${order.contact}</p>
           <p><strong>Date:</strong> ${formatDate(order.dateTime)}</p>
+          ${
+            order.receiveby
+              ? `<p><strong>Received By:</strong> ${order.receiveby}</p>`
+              : ""
+          }
         </div>
       </div>
 

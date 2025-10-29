@@ -6,7 +6,7 @@ import { generateInvoiceHTML } from "../templates/generateInvoiceHTML.js";
 
 export const placeOrder = async (req, res) => {
   try {
-    const { guestName, contact, tableNumber, dateTime, items, total } = req.body;
+    const { guestName, contact, tableNumber, dateTime, items, total, receiveby } = req.body;
 
     // Check if existing order is already pending for the same table & guest
     const { data: existingOrders, error: fetchError } = await supabase
@@ -33,14 +33,11 @@ export const placeOrder = async (req, res) => {
 
       // 🧩 Merge items without duplicating
       const mergedItems = [...oldItems];
-
       items.forEach((newItem) => {
         const existingIndex = mergedItems.findIndex(
           (i) => i.name === newItem.name
         );
-
         if (existingIndex !== -1) {
-          // If same item already exists, just increase quantity
           mergedItems[existingIndex].qty += newItem.qty;
           mergedItems[existingIndex].subtotal += newItem.subtotal;
         } else {
@@ -51,13 +48,14 @@ export const placeOrder = async (req, res) => {
       // Recalculate total
       const updatedTotal = mergedItems.reduce((sum, i) => sum + i.subtotal, 0);
 
-      // Update the existing order
+      // Update existing order
       const { error: updateError } = await supabase
         .from("orders")
         .update({
           items: mergedItems,
           total: updatedTotal,
           updated_at: new Date().toISOString(),
+          receiveby: receiveby || existingOrder.receiveby || null, // 🧩 added
         })
         .eq("id", existingOrder.id);
 
@@ -77,6 +75,7 @@ export const placeOrder = async (req, res) => {
           dateTime,
           items,
           total,
+          receiveby, // 🧩 added
           status: "Pending",
         },
       ]);
@@ -94,7 +93,6 @@ export const placeOrder = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // Get pending orders
 export const getPendingOrders = async (req, res) => {
@@ -201,6 +199,7 @@ export const getCompletedOrders = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Get single order by ID
 export const getOrderById = async (req, res) => {
