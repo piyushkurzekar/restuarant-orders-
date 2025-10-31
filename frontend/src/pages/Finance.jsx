@@ -381,3 +381,119 @@ const Finance = () => {
 };
 
 export default Finance;
+
+
+
+
+// export const placeOrder = async (req, res) => {
+//   try {
+//     const {
+//       guestName,
+//       contact,
+//       tableNumber,
+//       dateTime,
+//       items,
+//       total,
+//       receiveby,
+//       notes,
+//       extrasList,
+//     } = req.body;
+
+//     console.log("Incoming Order:", req.body);
+
+//     // ✅ Check if an active pending order exists for same table
+//     const { data: existingOrders, error: fetchError } = await supabase
+//       .from("orders")
+//       .select("*")
+//       .eq("tableNumber", tableNumber)
+//       .eq("status", "Pending");
+
+//     if (fetchError) throw fetchError;
+
+//     // ✅ If order exists → merge items + save extras
+//     if (existingOrders && existingOrders.length > 0) {
+//       const existingOrder = existingOrders[0];
+
+//       let oldItems = [];
+//       try {
+//         oldItems = Array.isArray(existingOrder.items)
+//           ? existingOrder.items
+//           : JSON.parse(existingOrder.items || "[]");
+//       } catch {
+//         oldItems = [];
+//       }
+
+//       // ✅ Merge items logically
+//       const mergedItems = [...oldItems];
+//       items.forEach((newItem) => {
+//         const idx = mergedItems.findIndex((i) => i.name === newItem.name);
+//         if (idx !== -1) {
+//           mergedItems[idx].qty += newItem.qty;
+//           mergedItems[idx].subtotal += newItem.subtotal;
+//         } else {
+//           mergedItems.push(newItem);
+//         }
+//       });
+
+//       const updatedTotal = mergedItems.reduce(
+//         (sum, i) => sum + i.subtotal,
+//         0
+//       );
+
+//       // ✅ Update order with new items + extras
+//       const { error: updateError } = await supabase
+//         .from("orders")
+//         .update({
+//           items: mergedItems,
+//           total: updatedTotal,
+//           updated_at: new Date().toISOString(),
+//           receiveby: receiveby || existingOrder.receiveby || null,
+//           paymentmode: existingOrder.paymentmode || null,
+
+//           // ✅ Keep previous extras or update with new ones
+//           notes: JSON.stringify(notes || existingOrder.notes || []),
+//           extrasList: JSON.stringify(
+//             extrasList || existingOrder.extrasList || []
+//           ),
+//         })
+//         .eq("id", existingOrder.id);
+
+//       if (updateError) throw updateError;
+
+//       return res.status(200).json({
+//         message: "Order updated successfully",
+//         type: "update",
+//       });
+//     }
+
+//     // ✅ No existing order → create a new one
+//     const { data, error } = await supabase.from("orders").insert([
+//       {
+//         guestName,
+//         contact,
+//         tableNumber,
+//         dateTime,
+//         items,
+//         total,
+//         receiveby,
+//         status: "Pending",
+//         paymentmode: null,
+
+//         // ✅ Save extras & notes
+//         notes: JSON.stringify(notes || []),
+//         extrasList: JSON.stringify(extrasList || []),
+//       },
+//     ]);
+
+//     if (error) throw error;
+
+//     return res.status(201).json({
+//       message: "Order placed successfully",
+//       type: "new",
+//       data,
+//     });
+//   } catch (err) {
+//     console.error("placeOrder error:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// };

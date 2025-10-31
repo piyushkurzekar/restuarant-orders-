@@ -8,7 +8,9 @@ export const placeOrder = async (req, res) => {
   try {
     const { guestName, contact, tableNumber, dateTime, items, total, receiveby } = req.body;
 
-    // Check if existing order is already pending for the same table & guest
+    console.log("Incoming Order:", req.body);
+
+    // Check if an order already exists for table with Pending status
     const { data: existingOrders, error: fetchError } = await supabase
       .from("orders")
       .select("*")
@@ -17,12 +19,12 @@ export const placeOrder = async (req, res) => {
 
     if (fetchError) throw fetchError;
 
+    // ✅ If order exists → Merge items
     if (existingOrders && existingOrders.length > 0) {
-      // 🟢 Update existing order instead of creating new one
       const existingOrder = existingOrders[0];
 
-      // Parse old items
       let oldItems = [];
+
       try {
         oldItems = Array.isArray(existingOrder.items)
           ? existingOrder.items
@@ -31,31 +33,28 @@ export const placeOrder = async (req, res) => {
         oldItems = [];
       }
 
-      // 🧩 Merge items without duplicating
-      const mergedItems = [...oldItems];
-      items.forEach((newItem) => {
-        const existingIndex = mergedItems.findIndex(
-          (i) => i.name === newItem.name
-        );
-        if (existingIndex !== -1) {
-          mergedItems[existingIndex].qty += newItem.qty;
-          mergedItems[existingIndex].subtotal += newItem.subtotal;
-        } else {
-          mergedItems.push(newItem);
-        }
-      });
+      // Merge items
+      const mergedItems = [...oldItems]; 
+      items.forEach((newItem) => { 
+        const existingIndex = mergedItems.findIndex((i) => i.name === 
+        newItem.name); 
+        if (existingIndex !== -1) { 
+          mergedItems[existingIndex].qty += newItem.qty; 
+          mergedItems[existingIndex].subtotal += newItem.subtotal; 
+        } else { 
+          mergedItems.push(newItem); } 
+        });
 
-      // Recalculate total
-      const updatedTotal = mergedItems.reduce((sum, i) => sum + i.subtotal, 0);
+     const updatedTotal = mergedItems.reduce((sum, i) => sum + i.subtotal, 0);
 
-      // Update existing order
       const { error: updateError } = await supabase
         .from("orders")
         .update({
           items: mergedItems,
           total: updatedTotal,
           updated_at: new Date().toISOString(),
-          receiveby: receiveby || existingOrder.receiveby || null, // 🧩 added
+          receiveby: receiveby || existingOrder.receiveby || null,
+          paymentmode: existingOrder.paymentmode || null,
         })
         .eq("id", existingOrder.id);
 
@@ -65,34 +64,36 @@ export const placeOrder = async (req, res) => {
         message: "Order updated successfully",
         type: "update",
       });
-    } else {
-      // 🆕 Create new order
-      const { data, error } = await supabase.from("orders").insert([
-        {
-          guestName,
-          contact,
-          tableNumber,
-          dateTime,
-          items,
-          total,
-          receiveby, // 🧩 added
-          status: "Pending",
-        },
+    }else { 
+      const { data, error } = await supabase.from("orders").insert([ 
+        { guestName, 
+          contact, 
+          tableNumber, 
+          dateTime, 
+          items, 
+          total, 
+          receiveby, 
+          status: "Pending", 
+          paymentmode: null 
+        }, 
       ]);
 
-      if (error) throw error;
 
-      return res.status(201).json({
-        message: "Order placed successfully",
-        type: "new",
-        data,
-      });
-    }
+    if (error) throw error;
+
+    res.status(201).json({
+      message: "Order placed successfully",
+      type: "new",
+      data,
+    });
+  }
   } catch (err) {
     console.error("placeOrder error:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
 // Get pending orders
 export const getPendingOrders = async (req, res) => {
@@ -169,9 +170,15 @@ export const getKitchenOrders = async (req, res) => {
 export const completeOrder = async (req, res) => {
   try {
     const { id } = req.params;
+    const { paymentmode } = req.body;  // ✅ get payment mode from frontend
+
     const { data, error } = await supabase
       .from("orders")
-      .update({ status: "Completed" })
+      .update({
+        status: "Completed",
+        paymentmode: paymentmode || null
+
+      })
       .eq("id", id)
       .select();
 
@@ -182,6 +189,7 @@ export const completeOrder = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Get completed orders
 export const getCompletedOrders = async (req, res) => {
@@ -247,6 +255,7 @@ export const sendInvoiceToWhatsApp = async (req, res) => {
         ? order.items
         : safeJSONParse(order.items, []),
       notes: safeJSONParse(order.notes, []),
+       extrasList: safeJSONParse(order.extrasList, []), 
       finalTotal: order.total || 0,
     };
 
@@ -291,5 +300,7 @@ export const sendInvoiceToWhatsApp = async (req, res) => {
   } catch (err) {
     console.error("❌ sendInvoiceToWhatsApp error:", err);
     res.status(500).json({ error: "Internal server error" });
+   
+
   }
 };

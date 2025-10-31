@@ -14,18 +14,25 @@ export const generateInvoiceHTML = (order) => {
     )
     .join("");
 
-  const notesHTML = order.notes
-    ?.map(
-      (note) => `
-        <tr style="background-color:#cff4fc;">
+      // ✅ Same logic as React, with safe fallback
+  const notes = Array.isArray(order.notes) ? order.notes : [];
+  const extrasList = Array.isArray(order.extrasList) ? order.extrasList : [];
+
+  const extrasHTML = notes
+    .map((note) => {
+      const extraMatch = extrasList.find((e) => e.text === note.text);
+      if (!extraMatch) return "";
+      return `
+        <tr style="background:#cff4fc;">
           <td>${note.text} (Extra)</td>
-          <td style="text-align:center;">${note.price}</td>
+          <td style="text-align:center;">${extraMatch.price}</td>
           <td style="text-align:center;">${note.qty}</td>
-          <td style="text-align:right;">${note.price * note.qty}</td>
+          <td style="text-align:right;">${extraMatch.price * note.qty}</td>
         </tr>
-      `
-    )
+      `;
+    })
     .join("");
+
 
   return `
 <!DOCTYPE html>
@@ -112,13 +119,22 @@ export const generateInvoiceHTML = (order) => {
           <p><strong>Table:</strong> ${order.tableNumber}</p>
           <p><strong>Contact:</strong> ${order.contact}</p>
           <p><strong>Date:</strong> ${formatDate(order.dateTime)}</p>
+          
           ${
             order.receiveby
               ? `<p><strong>Received By:</strong> ${order.receiveby}</p>`
               : ""
           }
+
+          <!-- ✅ Added Payment Mode Line -->
+          ${
+            order.paymentmode
+              ? `<p><strong>Payment Mode:</strong> ${order.paymentmode}</p>`
+              : `<p><strong>Payment Mode:</strong> Not Selected</p>`
+          }
         </div>
       </div>
+
 
       <table class="table">
         <thead>
@@ -131,7 +147,7 @@ export const generateInvoiceHTML = (order) => {
         </thead>
         <tbody>
           ${itemsHTML}
-          ${notesHTML || ""}
+          ${extrasHTML || ""}
         </tbody>
         <tfoot>
           <tr>

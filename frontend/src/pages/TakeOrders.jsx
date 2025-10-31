@@ -103,6 +103,7 @@ const TakeOrders = () => {
             (sum, item) => sum + (item.total || item.price * (item.quantity || 1)),
             0
           ),
+          paymentmode: null
         }),
       });
 

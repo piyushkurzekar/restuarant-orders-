@@ -14,6 +14,11 @@ const Cart = () => {
   const [orders, setOrders] = useState([]);
   const [tableNotes, setTableNotes] = useState({});
 
+  // 🆕 Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [paymentmode, setpaymentmode] = useState("");
+
   const fetchCartOrders = async () => {
     try {
       const res = await fetch("http://localhost:4000/api/orders/cart");
@@ -69,21 +74,39 @@ const Cart = () => {
     }
   };
 
-  const handleCompleteOrder = async (order) => {
+  // ✅ Instead of completing directly, show payment modal first
+  const openPaymentModal = (order) => {
+    setSelectedOrder(order);
+    setShowPaymentModal(true);
+  };
+
+  // ✅ Complete order WITH payment mode
+  const handleCompleteOrder = async () => {
+    if (!paymentmode) return alert("Please select payment mode!");
+
     try {
-      const res = await fetch(`http://localhost:4000/api/orders/complete/${order.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await fetch(
+        `http://localhost:4000/api/orders/complete/${selectedOrder.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ paymentmode }),
+
+        }
+      );
+
       if (!res.ok) throw new Error("Failed to complete order");
-      alert("Order completed!");
+
+      setShowPaymentModal(false);
+      alert("✅ Order completed!");
       fetchCartOrders();
-      navigate(`/invoice/${order.id}`);
+      navigate(`/invoice/${selectedOrder.id}`);
     } catch (err) {
       console.error(err);
       alert("Error completing order");
     }
   };
+  
 
   const handleAddMore = (order) => {
     navigate("/takeorders", { state: { addMoreFor: order } });
@@ -103,7 +126,7 @@ const Cart = () => {
               {order.contact} | Date: {new Date(order.dateTime).toLocaleString()} |{" "}
               Status: {order.status}
             </h5>
-            {/* ✅ Added waiter info */}
+
             <p style={{ fontWeight: "500", color: "#0d6efd" }}>
               👨‍🍳 Received By: {order.receiveby || "Not Assigned"}
             </p>
@@ -173,24 +196,15 @@ const Cart = () => {
 
             <div className="mt-3 d-flex gap-2">
               {order.status === "Pending" && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => handleConfirmOrder(order)}
-                >
+                <button className="btn btn-primary" onClick={() => handleConfirmOrder(order)}>
                   Confirm Order
                 </button>
               )}
-              <button
-                className="btn btn-warning"
-                onClick={() => handleAddMore(order)}
-              >
+              <button className="btn btn-warning" onClick={() => handleAddMore(order)}>
                 Add More
               </button>
               {order.status !== "Completed" && (
-                <button
-                  className="btn btn-success"
-                  onClick={() => handleCompleteOrder(order)}
-                >
+                <button className="btn btn-success" onClick={() => openPaymentModal(order)}>
                   Complete Order
                 </button>
               )}
@@ -198,6 +212,51 @@ const Cart = () => {
           </div>
         );
       })}
+
+      {/* 🆕 Payment Mode Modal */}
+      {showPaymentModal && (
+        <div className="payment-modal-bg">
+          <div className="payment-modal-box">
+            <h5>Select Payment Mode</h5>
+
+            <select
+              className="form-select mt-2"
+              value={paymentmode}
+              onChange={(e) => setpaymentmode(e.target.value)}
+            >
+              <option value="">Select Payment Mode</option>
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="Card">Card</option>
+              <option value="Pending">Pending / Room</option>
+              <option value="Split">Split</option>
+              <option value="Other">Other</option>
+            </select>
+
+            <div className="d-flex gap-2 mt-3">
+              <button className="btn btn-primary" onClick={handleCompleteOrder}>
+                Confirm & Complete
+              </button>
+              <button className="btn btn-secondary" onClick={() => setShowPaymentModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .payment-modal-bg {
+          position: fixed; inset: 0;
+          background: rgba(0,0,0,0.4);
+          display:flex; align-items:center; justify-content:center;
+          z-index:10000;
+        }
+        .payment-modal-box {
+          background:white; padding:20px; border-radius:8px;
+          width:300px; box-shadow:0 0 10px rgba(0,0,0,0.2);
+        }
+      `}</style>
     </div>
   );
 };

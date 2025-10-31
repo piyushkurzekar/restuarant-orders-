@@ -114,7 +114,7 @@ const Invoice = () => {
       <div
         style={{
           position: "absolute",
-          top: "50%",
+          top: "45%",
           left: "50%",
           transform: "translate(-50%, -50%) rotate(-30deg)",
           fontSize: "5rem",
@@ -145,6 +145,7 @@ const Invoice = () => {
             <p className="mb-0"><strong>Contact:</strong> {order.contact}</p>
             <p className="mb-0"><strong>Date:</strong> {new Date(order.dateTime).toLocaleString()}</p>
             <p className="mb-0"><strong>Received By:</strong> {order.receiveby || "—"}</p> {/* ✅ Added */}
+            <p className="mb-0"><strong>Payment Mode:</strong> {order.paymentmode || "N/A"}</p>
           </div>
         </div>
 
