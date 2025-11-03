@@ -6,92 +6,82 @@ import { generateInvoiceHTML } from "../templates/generateInvoiceHTML.js";
 
 export const placeOrder = async (req, res) => {
   try {
-    const { guestName, contact, tableNumber, dateTime, items, total, receiveby } = req.body;
+    const {
+      guestName,
+      contact,
+      tableNumber,
+      dateTime,
+      items,
+      total,
+      receiveby,
+      notes,
+    } = req.body;
 
     console.log("Incoming Order:", req.body);
 
-    // Check if an order already exists for table with Pending status
-    const { data: existingOrders, error: fetchError } = await supabase
+    const { data: existingOrder } = await supabase
       .from("orders")
       .select("*")
       .eq("tableNumber", tableNumber)
-      .eq("status", "Pending");
+      .eq("status", "Pending")
+      .single();
 
-    if (fetchError) throw fetchError;
+    if (existingOrder) {
 
-    // ✅ If order exists → Merge items
-    if (existingOrders && existingOrders.length > 0) {
-      const existingOrder = existingOrders[0];
+      let oldItems = Array.isArray(existingOrder.items)
+        ? existingOrder.items
+        : JSON.parse(existingOrder.items || "[]");
 
-      let oldItems = [];
+      const mergedItems = [...oldItems];
+      items.forEach((newItem) => {
+        const idx = mergedItems.findIndex((i) => i.name === newItem.name);
+        if (idx !== -1) {
+          mergedItems[idx].qty += newItem.qty;
+          mergedItems[idx].subtotal += newItem.subtotal;
+        } else {
+          mergedItems.push(newItem);
+        }
+      });
 
-      try {
-        oldItems = Array.isArray(existingOrder.items)
-          ? existingOrder.items
-          : JSON.parse(existingOrder.items || "[]");
-      } catch {
-        oldItems = [];
-      }
+      const updatedTotal = mergedItems.reduce((sum, i) => sum + i.subtotal, 0);
 
-      // Merge items
-      const mergedItems = [...oldItems]; 
-      items.forEach((newItem) => { 
-        const existingIndex = mergedItems.findIndex((i) => i.name === 
-        newItem.name); 
-        if (existingIndex !== -1) { 
-          mergedItems[existingIndex].qty += newItem.qty; 
-          mergedItems[existingIndex].subtotal += newItem.subtotal; 
-        } else { 
-          mergedItems.push(newItem); } 
-        });
-
-     const updatedTotal = mergedItems.reduce((sum, i) => sum + i.subtotal, 0);
-
-      const { error: updateError } = await supabase
+      await supabase
         .from("orders")
         .update({
           items: mergedItems,
           total: updatedTotal,
+          receiveby: receiveby || existingOrder.receiveby,
+          notes: JSON.stringify(notes || existingOrder.notes || []),
           updated_at: new Date().toISOString(),
-          receiveby: receiveby || existingOrder.receiveby || null,
-          paymentmode: existingOrder.paymentmode || null,
         })
         .eq("id", existingOrder.id);
 
-      if (updateError) throw updateError;
+      return res.json({ message: "Order updated successfully", type: "update" });
+    }
 
-      return res.status(200).json({
-        message: "Order updated successfully",
-        type: "update",
-      });
-    }else { 
-      const { data, error } = await supabase.from("orders").insert([ 
-        { guestName, 
-          contact, 
-          tableNumber, 
-          dateTime, 
-          items, 
-          total, 
-          receiveby, 
-          status: "Pending", 
-          paymentmode: null 
-        }, 
-      ]);
+    // ✅ New order
+    await supabase.from("orders").insert([
+      {
+        guestName,
+        contact,
+        tableNumber,
+        dateTime,
+        items,
+        total,
+        receiveby,
+        notes: JSON.stringify(notes || []),
+        status: "Pending",
+        paymentmode: null,
+      },
+    ]);
 
-
-    if (error) throw error;
-
-    res.status(201).json({
-      message: "Order placed successfully",
-      type: "new",
-      data,
-    });
-  }
+    res.json({ message: "Order placed successfully", type: "new" });
   } catch (err) {
     console.error("placeOrder error:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 
@@ -235,32 +225,44 @@ export const sendInvoiceToWhatsApp = async (req, res) => {
       .eq("id", orderId)
       .single();
 
-    if (orderError || !order)
+    if (orderError || !order) {
       return res.status(404).json({ error: "Order not found" });
+    }
 
-    // 2️⃣ Safe JSON Parse helper
+    // ✅ Safe JSON helper
     const safeJSONParse = (data, fallback = []) => {
       try {
         if (!data) return fallback;
-        return JSON.parse(data);
+        return typeof data === "string" ? JSON.parse(data) : data;
       } catch {
         return fallback;
       }
     };
 
-    // 3️⃣ Prepare full order object
+    // 2️⃣ Prepare full order object (Items + Notes/Extras)
     const fullOrder = {
       ...order,
+
+      // ✅ Fix items read
       items: Array.isArray(order.items)
         ? order.items
         : safeJSONParse(order.items, []),
-      notes: safeJSONParse(order.notes, []),
-       extrasList: safeJSONParse(order.extrasList, []), 
+
+      // ✅ Fix notes/extras read
+      notes: Array.isArray(order.notes)
+        ? order.notes
+        : Array.isArray(order.extralist)
+        ? order.extralist
+        : safeJSONParse(order.notes, []),
+
       finalTotal: order.total || 0,
     };
 
-    // 4️⃣ Generate invoice HTML using your template file
+    console.log("✅ Notes for invoice:", fullOrder.notes);
+
+    // 3️⃣ Create invoice HTML
     const invoiceHTML = generateInvoiceHTML(fullOrder);
+
 
     // 5️⃣ Generate PDF via Puppeteer
     const browser = await puppeteer.launch({
@@ -300,7 +302,7 @@ export const sendInvoiceToWhatsApp = async (req, res) => {
   } catch (err) {
     console.error("❌ sendInvoiceToWhatsApp error:", err);
     res.status(500).json({ error: "Internal server error" });
-   
+
 
   }
 };

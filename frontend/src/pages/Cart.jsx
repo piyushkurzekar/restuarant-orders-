@@ -14,7 +14,6 @@ const Cart = () => {
   const [orders, setOrders] = useState([]);
   const [tableNotes, setTableNotes] = useState({});
 
-  // 🆕 Payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentmode, setpaymentmode] = useState("");
@@ -57,15 +56,30 @@ const Cart = () => {
     });
   };
 
+  // ✅ Confirm Order (with price in notes)
   const handleConfirmOrder = async (order) => {
     const notes = tableNotes[order.id] || [];
+
+    const formattedNotes = notes
+      .filter(n => n.text) // avoid blank
+      .map(n => {
+        const extra = extrasList.find(e => e.text === n.text);
+        return {
+          text: n.text,
+          qty: n.qty,
+          price: extra ? extra.price : 0,
+          total: extra ? extra.price * n.qty : 0
+        };
+      });
+
     try {
       const res = await fetch(`http://localhost:4000/api/orders/confirm/${order.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ notes: formattedNotes }), // ✅ send with price
       });
       if (!res.ok) throw new Error("Failed to confirm order");
+
       alert("Order sent to Kitchen!");
       fetchCartOrders();
     } catch (err) {
@@ -74,13 +88,11 @@ const Cart = () => {
     }
   };
 
-  // ✅ Instead of completing directly, show payment modal first
   const openPaymentModal = (order) => {
     setSelectedOrder(order);
     setShowPaymentModal(true);
   };
 
-  // ✅ Complete order WITH payment mode
   const handleCompleteOrder = async () => {
     if (!paymentmode) return alert("Please select payment mode!");
 
@@ -90,8 +102,7 @@ const Cart = () => {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ paymentmode }),
-
+          body: JSON.stringify({ paymentmode }),
         }
       );
 
@@ -106,7 +117,6 @@ const Cart = () => {
       alert("Error completing order");
     }
   };
-  
 
   const handleAddMore = (order) => {
     navigate("/takeorders", { state: { addMoreFor: order } });
@@ -213,7 +223,6 @@ const Cart = () => {
         );
       })}
 
-      {/* 🆕 Payment Mode Modal */}
       {showPaymentModal && (
         <div className="payment-modal-bg">
           <div className="payment-modal-box">

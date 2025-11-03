@@ -385,115 +385,271 @@ export default Finance;
 
 
 
-// export const placeOrder = async (req, res) => {
-//   try {
-//     const {
-//       guestName,
-//       contact,
-//       tableNumber,
-//       dateTime,
-//       items,
-//       total,
-//       receiveby,
-//       notes,
-//       extrasList,
-//     } = req.body;
 
-//     console.log("Incoming Order:", req.body);
+// import React, { useState, useEffect } from "react";
+// import { useNavigate } from "react-router-dom";
 
-//     // ✅ Check if an active pending order exists for same table
-//     const { data: existingOrders, error: fetchError } = await supabase
-//       .from("orders")
-//       .select("*")
-//       .eq("tableNumber", tableNumber)
-//       .eq("status", "Pending");
+// const extrasList = [
+//   { text: "Extra Cheese", price: 50 },
+//   { text: "Extra Salt", price: 10 },
+//   { text: "Extra Butter", price: 30 },
+//   { text: "Extra Onion", price: 20 },
+//   { text: "Extra Roti", price: 25 },
+// ];
 
-//     if (fetchError) throw fetchError;
+// const Cart = () => {
+//   const navigate = useNavigate();
+//   const [orders, setOrders] = useState([]);
+//   const [tableNotes, setTableNotes] = useState({});
 
-//     // ✅ If order exists → merge items + save extras
-//     if (existingOrders && existingOrders.length > 0) {
-//       const existingOrder = existingOrders[0];
+//   // 🆕 Payment modal state
+//   const [showPaymentModal, setShowPaymentModal] = useState(false);
+//   const [selectedOrder, setSelectedOrder] = useState(null);
+//   const [paymentmode, setpaymentmode] = useState("");
 
-//       let oldItems = [];
-//       try {
-//         oldItems = Array.isArray(existingOrder.items)
-//           ? existingOrder.items
-//           : JSON.parse(existingOrder.items || "[]");
-//       } catch {
-//         oldItems = [];
-//       }
+//   const fetchCartOrders = async () => {
+//     try {
+//       const res = await fetch("http://localhost:4000/api/orders/cart");
+//       const data = await res.json();
+//       setOrders(Array.isArray(data) ? data : []);
+//     } catch (err) {
+//       console.error("Error fetching orders:", err);
+//       setOrders([]);
+//     }
+//   };
 
-//       // ✅ Merge items logically
-//       const mergedItems = [...oldItems];
-//       items.forEach((newItem) => {
-//         const idx = mergedItems.findIndex((i) => i.name === newItem.name);
-//         if (idx !== -1) {
-//           mergedItems[idx].qty += newItem.qty;
-//           mergedItems[idx].subtotal += newItem.subtotal;
-//         } else {
-//           mergedItems.push(newItem);
-//         }
+//   useEffect(() => {
+//     fetchCartOrders();
+//   }, []);
+
+//   const handleNoteChange = (orderId, index, field, value) => {
+//     setTableNotes((prev) => {
+//       const notes = prev[orderId] || [{ text: "", qty: 1 }];
+//       const updated = [...notes];
+//       updated[index][field] = field === "qty" ? parseInt(value, 10) || 1 : value;
+//       return { ...prev, [orderId]: updated };
+//     });
+//   };
+
+//   const handleAddNote = (orderId) => {
+//     setTableNotes((prev) => {
+//       const notes = prev[orderId] || [{ text: "", qty: 1 }];
+//       return { ...prev, [orderId]: [...notes, { text: "", qty: 1 }] };
+//     });
+//   };
+
+//   const handleRemoveNote = (orderId, index) => {
+//     setTableNotes((prev) => {
+//       const notes = prev[orderId] || [];
+//       return { ...prev, [orderId]: notes.filter((_, i) => i !== index) };
+//     });
+//   };
+
+//   const handleConfirmOrder = async (order) => {
+//     const notes = tableNotes[order.id] || [];
+//     try {
+//       const res = await fetch(`http://localhost:4000/api/orders/confirm/${order.id}`, {
+//         method: "PATCH",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ notes }),
 //       });
+//       if (!res.ok) throw new Error("Failed to confirm order");
+//       alert("Order sent to Kitchen!");
+//       fetchCartOrders();
+//     } catch (err) {
+//       console.error(err);
+//       alert("Error confirming order");
+//     }
+//   };
 
-//       const updatedTotal = mergedItems.reduce(
-//         (sum, i) => sum + i.subtotal,
-//         0
+//   // ✅ Instead of completing directly, show payment modal first
+//   const openPaymentModal = (order) => {
+//     setSelectedOrder(order);
+//     setShowPaymentModal(true);
+//   };
+
+//   // ✅ Complete order WITH payment mode
+//   const handleCompleteOrder = async () => {
+//     if (!paymentmode) return alert("Please select payment mode!");
+
+//     try {
+//       const res = await fetch(
+//         `http://localhost:4000/api/orders/complete/${selectedOrder.id}`,
+//         {
+//           method: "PATCH",
+//           headers: { "Content-Type": "application/json" },
+//          body: JSON.stringify({ paymentmode }),
+
+//         }
 //       );
 
-//       // ✅ Update order with new items + extras
-//       const { error: updateError } = await supabase
-//         .from("orders")
-//         .update({
-//           items: mergedItems,
-//           total: updatedTotal,
-//           updated_at: new Date().toISOString(),
-//           receiveby: receiveby || existingOrder.receiveby || null,
-//           paymentmode: existingOrder.paymentmode || null,
+//       if (!res.ok) throw new Error("Failed to complete order");
 
-//           // ✅ Keep previous extras or update with new ones
-//           notes: JSON.stringify(notes || existingOrder.notes || []),
-//           extrasList: JSON.stringify(
-//             extrasList || existingOrder.extrasList || []
-//           ),
-//         })
-//         .eq("id", existingOrder.id);
-
-//       if (updateError) throw updateError;
-
-//       return res.status(200).json({
-//         message: "Order updated successfully",
-//         type: "update",
-//       });
+//       setShowPaymentModal(false);
+//       alert("✅ Order completed!");
+//       fetchCartOrders();
+//       navigate(`/invoice/${selectedOrder.id}`);
+//     } catch (err) {
+//       console.error(err);
+//       alert("Error completing order");
 //     }
+//   };
+  
 
-//     // ✅ No existing order → create a new one
-//     const { data, error } = await supabase.from("orders").insert([
-//       {
-//         guestName,
-//         contact,
-//         tableNumber,
-//         dateTime,
-//         items,
-//         total,
-//         receiveby,
-//         status: "Pending",
-//         paymentmode: null,
+//   const handleAddMore = (order) => {
+//     navigate("/takeorders", { state: { addMoreFor: order } });
+//   };
 
-//         // ✅ Save extras & notes
-//         notes: JSON.stringify(notes || []),
-//         extrasList: JSON.stringify(extrasList || []),
-//       },
-//     ]);
+//   return (
+//     <div className="container my-3">
+//       <h2>Cart</h2>
+//       {orders.length === 0 && <p>No pending or confirmed orders.</p>}
 
-//     if (error) throw error;
+//       {orders.map((order) => {
+//         const notes = tableNotes[order.id] || [{ text: "", qty: 1 }];
+//         return (
+//           <div key={order.id} className="card shadow p-3 mb-3 border">
+//             <h5>
+//               Guest: {order.guestName} | Table: {order.tableNumber} | Contact:{" "}
+//               {order.contact} | Date: {new Date(order.dateTime).toLocaleString()} |{" "}
+//               Status: {order.status}
+//             </h5>
 
-//     return res.status(201).json({
-//       message: "Order placed successfully",
-//       type: "new",
-//       data,
-//     });
-//   } catch (err) {
-//     console.error("placeOrder error:", err);
-//     res.status(500).json({ error: err.message });
-//   }
+//             <p style={{ fontWeight: "500", color: "#0d6efd" }}>
+//               👨‍🍳 Received By: {order.receiveby || "Not Assigned"}
+//             </p>
+
+//             <ul>
+//               {order.items?.map((item, idx) => (
+//                 <li key={idx}>
+//                   {item.name} x {item.quantity || 1} - ₹
+//                   {item.total || item.price * (item.quantity || 1)}
+//                 </li>
+//               ))}
+//               {notes.map((note, idx) => {
+//                 if (!note.text) return null;
+//                 const extra = extrasList.find((e) => e.text === note.text);
+//                 return (
+//                   <li key={idx} style={{ color: "blue" }}>
+//                     {note.text} x {note.qty} - ₹{extra ? extra.price * note.qty : 0}
+//                   </li>
+//                 );
+//               })}
+//             </ul>
+
+//             <div className="mt-2">
+//               <h6>Add Special Notes / Extras</h6>
+//               {notes.map((note, idx) => (
+//                 <div key={idx} className="d-flex gap-2 align-items-center mb-2">
+//                   <select
+//                     className="form-control"
+//                     value={note.text}
+//                     onChange={(e) =>
+//                       handleNoteChange(order.id, idx, "text", e.target.value)
+//                     }
+//                   >
+//                     <option value="">Select Extra</option>
+//                     {extrasList.map((extra, i) => (
+//                       <option key={i} value={extra.text}>
+//                         {extra.text} (₹{extra.price})
+//                       </option>
+//                     ))}
+//                   </select>
+//                   <input
+//                     type="number"
+//                     className="form-control"
+//                     placeholder="Qty"
+//                     min="1"
+//                     style={{ width: "80px" }}
+//                     value={note.qty}
+//                     onChange={(e) =>
+//                       handleNoteChange(order.id, idx, "qty", e.target.value)
+//                     }
+//                   />
+//                   <button
+//                     className="btn btn-danger"
+//                     onClick={() => handleRemoveNote(order.id, idx)}
+//                   >
+//                     ✕
+//                   </button>
+//                 </div>
+//               ))}
+//               <button
+//                 className="btn btn-outline-primary btn-sm"
+//                 onClick={() => handleAddNote(order.id)}
+//               >
+//                 + Add Extra
+//               </button>
+//             </div>
+
+//             <div className="mt-3 d-flex gap-2">
+//               {order.status === "Pending" && (
+//                 <button className="btn btn-primary" onClick={() => handleConfirmOrder(order)}>
+//                   Confirm Order
+//                 </button>
+//               )}
+//               <button className="btn btn-warning" onClick={() => handleAddMore(order)}>
+//                 Add More
+//               </button>
+//               {order.status !== "Completed" && (
+//                 <button className="btn btn-success" onClick={() => openPaymentModal(order)}>
+//                   Complete Order
+//                 </button>
+//               )}
+//             </div>
+//           </div>
+//         );
+//       })}
+
+//       {/* 🆕 Payment Mode Modal */}
+//       {showPaymentModal && (
+//         <div className="payment-modal-bg">
+//           <div className="payment-modal-box">
+//             <h5>Select Payment Mode</h5>
+
+//             <select
+//               className="form-select mt-2"
+//               value={paymentmode}
+//               onChange={(e) => setpaymentmode(e.target.value)}
+//             >
+//               <option value="">Select Payment Mode</option>
+//               <option value="Cash">Cash</option>
+//               <option value="UPI">UPI</option>
+//               <option value="Card">Card</option>
+//               <option value="Pending">Pending / Room</option>
+//               <option value="Split">Split</option>
+//               <option value="Other">Other</option>
+//             </select>
+
+//             <div className="d-flex gap-2 mt-3">
+//               <button className="btn btn-primary" onClick={handleCompleteOrder}>
+//                 Confirm & Complete
+//               </button>
+//               <button className="btn btn-secondary" onClick={() => setShowPaymentModal(false)}>
+//                 Cancel
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       <style>{`
+//         .payment-modal-bg {
+//           position: fixed; inset: 0;
+//           background: rgba(0,0,0,0.4);
+//           display:flex; align-items:center; justify-content:center;
+//           z-index:10000;
+//         }
+//         .payment-modal-box {
+//           background:white; padding:20px; border-radius:8px;
+//           width:300px; box-shadow:0 0 10px rgba(0,0,0,0.2);
+//         }
+//       `}</style>
+//     </div>
+//   );
 // };
+
+// export default Cart;
+
+
+

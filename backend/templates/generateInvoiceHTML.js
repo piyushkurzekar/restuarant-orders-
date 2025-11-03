@@ -1,6 +1,10 @@
 export const generateInvoiceHTML = (order) => {
+  // ✅ Notes handle karo (DB se aaye ya frontend se)
+  order.notes = order.notes || order.extralist || [];
+
   const formatDate = (date) => new Date(date).toLocaleString("en-IN");
 
+  // ✅ Items HTML
   const itemsHTML = order.items
     ?.map(
       (item) => `
@@ -14,26 +18,45 @@ export const generateInvoiceHTML = (order) => {
     )
     .join("");
 
-      // ✅ Same logic as React, with safe fallback
+  // ✅ Notes array fallback
   const notes = Array.isArray(order.notes) ? order.notes : [];
-  const extrasList = Array.isArray(order.extrasList) ? order.extrasList : [];
 
+  // ✅ Extras HTML
   const extrasHTML = notes
     .map((note) => {
-      const extraMatch = extrasList.find((e) => e.text === note.text);
-      if (!extraMatch) return "";
+      const price = note.price || 0;
+      const qty = note.qty || 1;
+      const subtotal = price * qty;
+
       return `
-        <tr style="background:#cff4fc;">
-          <td>${note.text} (Extra)</td>
-          <td style="text-align:center;">${extraMatch.price}</td>
-          <td style="text-align:center;">${note.qty}</td>
-          <td style="text-align:right;">${extraMatch.price * note.qty}</td>
-        </tr>
-      `;
+    <tr style="background:#cff4fc;">
+      <td>${note.text} (Extra)</td>
+      <td style="text-align:center;">${price}</td>
+      <td style="text-align:center;">${qty}</td>
+      <td style="text-align:right;">${subtotal}</td>
+    </tr>`;
     })
     .join("");
 
+  // ✅ Calculate Total Items Amount
+  let totalAmount =
+    order.items?.reduce((acc, item) => {
+      const qty = item.quantity || 1;
+      return acc + (item.total || item.price * qty);
+    }, 0) || 0;
 
+  // ✅ Calculate Extras Total
+  let extrasTotal =
+    notes.reduce((acc, note) => {
+      const price = note.price || 0;
+      const qty = note.qty || 1;
+      return acc + price * qty;
+    }, 0) || 0;
+
+  // ✅ Final Total
+  order.finalTotal = totalAmount + extrasTotal;
+
+  // ✅ RETURN HTML
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -76,10 +99,7 @@ export const generateInvoiceHTML = (order) => {
       justify-content: space-between;
       margin-bottom: 25px;
     }
-    .left h2 {
-      color: #198754;
-      margin-bottom: 5px;
-    }
+    .left h2 { color: #198754; margin-bottom: 5px; }
     .table {
       width: 100%;
       border-collapse: collapse;
@@ -119,14 +139,13 @@ export const generateInvoiceHTML = (order) => {
           <p><strong>Table:</strong> ${order.tableNumber}</p>
           <p><strong>Contact:</strong> ${order.contact}</p>
           <p><strong>Date:</strong> ${formatDate(order.dateTime)}</p>
-          
+
           ${
             order.receiveby
               ? `<p><strong>Received By:</strong> ${order.receiveby}</p>`
               : ""
           }
 
-          <!-- ✅ Added Payment Mode Line -->
           ${
             order.paymentmode
               ? `<p><strong>Payment Mode:</strong> ${order.paymentmode}</p>`
@@ -134,7 +153,6 @@ export const generateInvoiceHTML = (order) => {
           }
         </div>
       </div>
-
 
       <table class="table">
         <thead>
@@ -147,7 +165,7 @@ export const generateInvoiceHTML = (order) => {
         </thead>
         <tbody>
           ${itemsHTML}
-          ${extrasHTML || ""}
+          ${extrasHTML}
         </tbody>
         <tfoot>
           <tr>
