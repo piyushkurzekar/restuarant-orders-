@@ -19,6 +19,7 @@ import Invoice from "./pages/Invoice.jsx";   // ✅ Kitchen added
 
 import { OrdersProvider } from "./context/OrdersContext";
 
+
 const App = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
