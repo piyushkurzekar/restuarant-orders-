@@ -99,7 +99,7 @@ export const generateInvoiceHTML = (order) => {
       justify-content: space-between;
       margin-bottom: 25px;
     }
-    .left h2 { color: #198754; margin-bottom: 5px; }
+    .left h1 { color: #198754; margin-bottom: 5px; }
     .table {
       width: 100%;
       border-collapse: collapse;
@@ -128,7 +128,7 @@ export const generateInvoiceHTML = (order) => {
     <div class="content">
       <div class="header">
         <div class="left">
-          <h2>SHIVAAM FARMS & RESORTS</h2>
+          <h1>SHIVAAM FARMS & RESORTS</h1>
           <p>01, AB, Green Planet, Omkar Nagar</p>
           <p>Phone: +91 7387750307</p>
           <p>Email: shivaamfarmsandresorts@gmail.com</p>
