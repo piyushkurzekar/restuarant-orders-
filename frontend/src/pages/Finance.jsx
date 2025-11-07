@@ -383,7 +383,22 @@ const Finance = () => {
 export default Finance;
 
 
+//  finalTotal:
+//         order.grand_total ||
+//         ((order.total || 0) + (order.gst_total || 0)),
 
+
+
+
+
+  // status: "Completed",
+  //       paymentmode: paymentmode || null,
+  //       cgst,
+  //       sgst,
+  //       igst,
+  //       gst_total: cgst + sgst + igst,   // ✅ add this for total GST
+  //       grand_total: total + cgst + sgst + igst,  // ✅ lowercase for React
+  //       updated_at: new Date().toISOString(),
 
 
 // import React, { useState, useEffect } from "react";

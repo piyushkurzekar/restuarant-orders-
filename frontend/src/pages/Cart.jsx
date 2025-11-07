@@ -14,6 +14,9 @@ const Cart = () => {
   const [orders, setOrders] = useState([]);
   const [tableNotes, setTableNotes] = useState({});
 
+  const [gst_type, setgst_type] = useState("");
+
+
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentmode, setpaymentmode] = useState("");
@@ -95,6 +98,7 @@ const Cart = () => {
 
   const handleCompleteOrder = async () => {
     if (!paymentmode) return alert("Please select payment mode!");
+    if (!gst_type) return alert("Please select GST type!");
 
     try {
       const res = await fetch(
@@ -102,7 +106,10 @@ const Cart = () => {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentmode }),
+          body: JSON.stringify({
+            paymentmode,
+            gst_type, // ✅ send GST type to backend
+          }),
         }
       );
 
@@ -242,6 +249,25 @@ const Cart = () => {
               <option value="Other">Other</option>
             </select>
 
+            <div style={{ marginTop: "10px" }}>
+              <label htmlFor="gst_type">GST Type:</label>
+              <select
+                id="gst_type"
+                value={gst_type}
+                onChange={(e) => setgst_type(e.target.value)}
+                style={{
+                  marginLeft: "10px",
+                  padding: "5px",
+                  borderRadius: "5px",
+                  border: "1px solid #ccc",
+                }}
+              >
+                <option value="">Select GST Type</option>
+                <option value="intra">Intra-State (CGST + SGST)</option>
+                <option value="inter">Inter-State (IGST)</option>
+              </select>
+            </div>
+
             <div className="d-flex gap-2 mt-3">
               <button className="btn btn-primary" onClick={handleCompleteOrder}>
                 Confirm & Complete
@@ -249,8 +275,15 @@ const Cart = () => {
               <button className="btn btn-secondary" onClick={() => setShowPaymentModal(false)}>
                 Cancel
               </button>
+
+
+
             </div>
+
           </div>
+
+
+
         </div>
       )}
 

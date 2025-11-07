@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -90,12 +89,11 @@ const Invoice = () => {
 📅 *Date:* ${new Date(order.date || Date.now()).toLocaleDateString("en-IN")}
 💰 *Total Amount:* ₹${finalTotal}
 
-
 📎 *Download Invoice (PDF):* ${data.publicUrl}
 
 📍 *Thank you for visiting Shivaam Farms & Resorts!*
 ━━━━━━━━━━━━━━━━━━━
-    `.trim();
+      `.trim();
 
       // 4️⃣ Open WhatsApp with formatted message
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
@@ -107,6 +105,8 @@ const Invoice = () => {
       setLoading(false);
     }
   };
+  // console.log("🧾 Order data:", order);
+
 
   return (
     <div className="container my-2 p-4 border rounded shadow bg-white position-relative">
@@ -144,7 +144,7 @@ const Invoice = () => {
             <p className="mb-0"><strong>Table:</strong> {order.tableNumber}</p>
             <p className="mb-0"><strong>Contact:</strong> {order.contact}</p>
             <p className="mb-0"><strong>Date:</strong> {new Date(order.dateTime).toLocaleString()}</p>
-            <p className="mb-0"><strong>Received By:</strong> {order.receiveby || "—"}</p> {/* ✅ Added */}
+            <p className="mb-0"><strong>Received By:</strong> {order.receiveby || "—"}</p>
             <p className="mb-0"><strong>Payment Mode:</strong> {order.paymentmode || "N/A"}</p>
           </div>
         </div>
@@ -185,12 +185,56 @@ const Invoice = () => {
             </tbody>
             <tfoot>
               <tr>
-                <th colSpan="3" className="text-end">Total Amount</th>
+                <th colSpan="3" className="text-end">Sub Total</th>
                 <th className="text-end text-success">₹ {finalTotal}</th>
               </tr>
             </tfoot>
           </table>
         </div>
+
+        {/* ✅ GST Table (Dynamic Based on gst_type) */}
+        {order.gst_type && (
+          <div className="table-responsive mt-3">
+            <table className="table table-bordered">
+              <thead className="table-warning">
+                <tr>
+                  <th>Tax Type</th>
+                  <th className="text-end">Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.gst_type?.toLowerCase() === "intra" ? (
+                  <>
+                    <tr>
+                      <td>CGST (2.5%)</td>
+                      <td className="text-end">{order.cgst?.toFixed(2) || 0}</td>
+                    </tr>
+                    <tr>
+                      <td>SGST (2.5%)</td>
+                      <td className="text-end">{order.sgst?.toFixed(2) || 0}</td>
+                    </tr>
+                  </>
+                ) : (
+                  <tr>
+                    <td>IGST (5%)</td>
+                    <td className="text-end">{order.igst?.toFixed(2) || 0}</td>
+                  </tr>
+                )}
+
+                <tr className="table-info fw-bold">
+                  <td>Total GST</td>
+                  <td className="text-end">{order.gst_total?.toFixed(2) || 0}</td>
+                </tr>
+                <tr className="table-success fw-bold">
+                  <td>Grand Total</td>
+                  <td className="text-end">₹ {order.grand_total?.toFixed(2) || 0}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+
 
         {/* Buttons */}
         <div className="d-flex justify-content-end gap-2 mt-3">

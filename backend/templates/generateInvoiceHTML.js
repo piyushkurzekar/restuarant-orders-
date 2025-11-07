@@ -1,182 +1,212 @@
 export const generateInvoiceHTML = (order) => {
-  // ✅ Notes handle karo (DB se aaye ya frontend se)
   order.notes = order.notes || order.extralist || [];
 
-  const formatDate = (date) => new Date(date).toLocaleString("en-IN");
+  const formatDate = (date) =>
+    new Date(date || Date.now()).toLocaleString("en-IN");
 
-  // ✅ Items HTML
   const itemsHTML = order.items
     ?.map(
       (item) => `
-        <tr>
-          <td>${item.name}</td>
-          <td style="text-align:center;">${item.price}</td>
-          <td style="text-align:center;">${item.quantity || 1}</td>
-          <td style="text-align:right;">${item.total || item.price * (item.quantity || 1)}</td>
-        </tr>
-      `
+      <tr>
+        <td>${item.name}</td>
+        <td class="text-center">₹ ${item.price.toFixed(2)}</td>
+        <td class="text-center">${item.quantity || 1}</td>
+        <td class="text-end">₹ ${(item.total || item.price * (item.quantity || 1)).toFixed(2)}</td>
+      </tr>`
     )
     .join("");
 
-  // ✅ Notes array fallback
-  const notes = Array.isArray(order.notes) ? order.notes : [];
-
-  // ✅ Extras HTML
-  const extrasHTML = notes
+  const extrasHTML = (order.notes || [])
     .map((note) => {
-      const price = note.price || 0;
-      const qty = note.qty || 1;
-      const subtotal = price * qty;
-
+      const subtotal = (note.price || 0) * (note.qty || 1);
       return `
-    <tr style="background:#cff4fc;">
-      <td>${note.text} (Extra)</td>
-      <td style="text-align:center;">${price}</td>
-      <td style="text-align:center;">${qty}</td>
-      <td style="text-align:right;">${subtotal}</td>
-    </tr>`;
+      <tr class="extra-row">
+        <td>${note.text} (Extra)</td>
+        <td class="text-center">₹ ${note.price?.toFixed(2) || "0.00"}</td>
+        <td class="text-center">${note.qty || 1}</td>
+        <td class="text-end">₹ ${subtotal.toFixed(2)}</td>
+      </tr>`;
     })
     .join("");
 
-  // ✅ Calculate Total Items Amount
-  let totalAmount =
-    order.items?.reduce((acc, item) => {
-      const qty = item.quantity || 1;
-      return acc + (item.total || item.price * qty);
-    }, 0) || 0;
+  const totalItems =
+    order.items?.reduce(
+      (acc, i) => acc + (i.total || i.price * (i.quantity || 1)),
+      0
+    ) || 0;
 
-  // ✅ Calculate Extras Total
-  let extrasTotal =
-    notes.reduce((acc, note) => {
-      const price = note.price || 0;
-      const qty = note.qty || 1;
-      return acc + price * qty;
-    }, 0) || 0;
+  const totalExtras =
+    order.notes?.reduce(
+      (acc, n) => acc + (n.price || 0) * (n.qty || 1),
+      0
+    ) || 0;
 
-  // ✅ Final Total
-  order.finalTotal = totalAmount + extrasTotal;
+  const subtotal = totalItems + totalExtras;
+  const gstRate = 0.05;
+  const gstAmount = subtotal * gstRate;
+  const grandTotal = subtotal + gstAmount;
 
-  // ✅ RETURN HTML
+  // ✅ Improved GST handling
+  let gstHTML = "";
+  const gstType = order.gstType?.toLowerCase?.() || order.gst_type?.toLowerCase?.() || "inter";
+
+  if (gstType === "intra") {
+    const cgst = gstAmount / 2;
+    const sgst = gstAmount / 2;
+    gstHTML = `
+      <tr><td>CGST (2.5%)</td><td class="text-end">₹ ${cgst.toFixed(2)}</td></tr>
+      <tr><td>SGST (2.5%)</td><td class="text-end">₹ ${sgst.toFixed(2)}</td></tr>`;
+  } else {
+    gstHTML = `
+      <tr><td>IGST (5%)</td><td class="text-end">₹ ${gstAmount.toFixed(2)}</td></tr>`;
+  }
+
   return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Invoice - ${order.guestName}</title>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background: #fff;
-      margin: 0;
-      padding: 20px;
-      position: relative;
-    }
-    .container {
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      padding: 25px;
-      background-color: #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      position: relative;
-    }
-    .watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 5rem;
-      color: rgba(0,0,0,0.07);
-      font-weight: 700;
-      text-transform: uppercase;
-      pointer-events: none;
-      user-select: none;
-      z-index: 0;
-      text-align: center;
-    }
-    .content { position: relative; z-index: 1; }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 25px;
-    }
-    .left h1 { color: #198754; margin-bottom: 5px; }
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    .table th, .table td {
-      border: 1px solid #ccc;
-      padding: 8px 10px;
-    }
-    .table th {
-      background-color: #d1e7dd;
-    }
-    tfoot th {
-      background: #fff;
-      color: #198754;
-      font-size: 1.1rem;
-    }
-    .text-end { text-align: right; }
-    .text-center { text-align: center; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="watermark">SHIVAAM FARMS & RESORTS</div>
-
-    <div class="content">
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Invoice - ${order.guestName}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: "Poppins", Arial, sans-serif;
+        background: #f6f8f7;
+        margin: 0;
+        padding: 0;
+      }
+      .invoice-container {
+        max-width: 700px;
+        background: #fff;
+        margin: 15px auto;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      }
+      .header {
+        padding: 20px;
+      }
+      .header h2 {
+        margin: 0;
+        font-size: 22px;
+        color: #1b8c48;
+        font-weight: 700;
+      }
+      .header p {
+        margin: 2px 0;
+        font-size: 13px;
+      }
+      .invoice-info {
+        text-align: right;
+        font-size: 13px;
+      }
+      .content {
+        padding: 15px 20px 25px 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th, td {
+        padding: 8px;
+        border: 1px solid #ddd;
+      }
+      th {
+        background: #dff2e1;
+        text-align: left;
+      }
+      tr:nth-child(even) {
+        background: #f9f9f9;
+      }
+      .extra-row {
+        background: #e8f6ff;
+      }
+      .totals {
+        margin-top: 10px;
+      }
+      .totals th {
+        background: #fff7d6;
+      }
+      .gst-row {
+        background: #e8f6ff;
+        font-weight: bold;
+      }
+      .grand-total {
+        background: #e6ffe6;
+        font-weight: bold;
+        font-size: 15px;
+      }
+      @media screen and (max-width: 600px) {
+        .header, .invoice-info {
+          text-align: center;
+        }
+        .invoice-info {
+          margin-top: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="invoice-container">
       <div class="header">
-        <div class="left">
-          <h1>SHIVAAM FARMS & RESORTS</h1>
-          <p>01, AB, Green Planet, Omkar Nagar</p>
-          <p>Phone: +91 7387750307</p>
-          <p>Email: shivaamfarmsandresorts@gmail.com</p>
-        </div>
-        <div class="right" style="text-align:right;">
-          <h3>INVOICE</h3>
-          <p><strong>Invoice To:</strong> ${order.guestName}</p>
-          <p><strong>Table:</strong> ${order.tableNumber}</p>
-          <p><strong>Contact:</strong> ${order.contact}</p>
-          <p><strong>Date:</strong> ${formatDate(order.dateTime)}</p>
-
-          ${
-            order.receiveby
-              ? `<p><strong>Received By:</strong> ${order.receiveby}</p>`
-              : ""
-          }
-
-          ${
-            order.paymentmode
-              ? `<p><strong>Payment Mode:</strong> ${order.paymentmode}</p>`
-              : `<p><strong>Payment Mode:</strong> Not Selected</p>`
-          }
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+          <div>
+            <h2>SHIVAAM FARMS & RESORTS</h2>
+            <p>01, AB, Green Planet, Omkar Nagar</p>
+            <p>Phone: +91 7387750307</p>
+            <p>Email: shivaamfarmsandresorts@gmail.com</p>
+          </div>
+          <div class="invoice-info">
+            <p><b>Invoice To:</b> ${order.guestName}</p>
+            <p><b>Table:</b> ${order.tableNumber}</p>
+            <p><b>Contact:</b> ${order.contact || "-"}</p>
+            <p><b>Date:</b> ${formatDate(order.dateTime)}</p>
+            ${order.receiveby ? `<p><b>Received By:</b> ${order.receiveby}</p>` : ""}
+            <p><b>Payment Mode:</b> ${order.paymentmode || "Not Selected"}</p>
+          </div>
         </div>
       </div>
 
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th class="text-center">Rate (₹)</th>
-            <th class="text-center">Qty</th>
-            <th class="text-end">Subtotal (₹)</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsHTML}
-          ${extrasHTML}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th colspan="3" class="text-end">Total Amount</th>
-            <th class="text-end">₹ ${order.finalTotal}</th>
-          </tr>
-        </tfoot>
-      </table>
+      <div class="content">
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Rate (₹)</th>
+              <th>Qty</th>
+              <th>Subtotal (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHTML}
+            ${extrasHTML}
+            <tr>
+              <td colspan="3" style="text-align:right; font-weight:bold;">Sub Total</td>
+              <td>₹ ${subtotal.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <table>
+            <tr>
+              <th>Tax Type</th>
+              <th>Amount (₹)</th>
+            </tr>
+            ${gstHTML}
+            <tr class="gst-row">
+              <td>Total GST</td>
+              <td>₹ ${gstAmount.toFixed(2)}</td>
+            </tr>
+            <tr class="grand-total">
+              <td>Grand Total</td>
+              <td>₹ ${grandTotal.toFixed(2)}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
-</body>
-</html>
-  `;
+  </body>
+  </html>`;
 };
