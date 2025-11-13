@@ -341,7 +341,11 @@ export const sendInvoiceToWhatsApp = async (req, res) => {
     // 5️⃣ Generate PDF via Puppeteer
     const browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"], // for server safety
+      args: [        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--single-process",
+        "--no-zygote"], // for server safety
     });
     const page = await browser.newPage();
     await page.setContent(invoiceHTML, { waitUntil: "networkidle0" });
