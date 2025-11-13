@@ -346,8 +346,7 @@ export const sendInvoiceToWhatsApp = async (req, res) => {
         "--disable-dev-shm-usage",
         "--single-process",
         "--no-zygote"],
-       executablePath:
-    process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(), // for server safety
+      executablePath: puppeteer.executablePath(), // for server safety
     });
     const page = await browser.newPage();
     await page.setContent(invoiceHTML, { waitUntil: "networkidle0" });
