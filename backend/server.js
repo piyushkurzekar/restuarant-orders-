@@ -21,7 +21,7 @@ app.use("/api/restaurant-stocks", restaurantStockRoutes);
 
 // Test route
 app.get("/", (req, res) => {
-    res.send("✅ Backend running (Staff + Orders + stock)");
+    res.send("✅ Backend running ");
 });
 
 //  Reset used_today every midnight
@@ -45,6 +45,7 @@ cron.schedule("0 0 * * *", async () => {
 
 // Start server
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-    console.log(`Backend running on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
+
