@@ -87,7 +87,7 @@ const Invoice = () => {
 ━━━━━━━━━━━━━━━━━━━
 🏷️ *Invoice ID:* ${order.id}
 📅 *Date:* ${new Date(order.date || Date.now()).toLocaleDateString("en-IN")}
-💰 *Total Amount:* ₹${finalTotal}
+💰 *Total Amount:* ₹${order.grand_total?.toFixed(2)}
 
 📎 *Download Invoice (PDF):* ${data.publicUrl}
 
