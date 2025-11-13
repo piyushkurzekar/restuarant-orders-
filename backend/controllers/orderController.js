@@ -345,7 +345,10 @@ export const sendInvoiceToWhatsApp = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--single-process",
-        "--no-zygote"], // for server safety
+        "--no-zygote"],
+          executablePath:
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    "/opt/render/.cache/puppeteer/chrome/linux-142.0.7444.162/chrome-linux64/chrome", // for server safety
     });
     const page = await browser.newPage();
     await page.setContent(invoiceHTML, { waitUntil: "networkidle0" });
